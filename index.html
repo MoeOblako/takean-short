@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Перенаправление...</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #e8e8e8;
+        }
+        .loader {
+            text-align: center;
+        }
+        .loader .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #2a2a2a;
+            border-top-color: #4f8cff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .loader p {
+            color: #888;
+            font-size: 14px;
+        }
+        .loader .error {
+            color: #f44336;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="loader">
+        <div class="spinner"></div>
+        <p>Перенаправление...</p>
+        <p class="error" id="errorMsg">❌ Пост не найден</p>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <script>
+        // ============================================================
+        // FIREBASE НАСТРОЙКИ (ТЕ ЖЕ)
+        // ============================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyBDzDIwiObevnlfqfm6p9fzAvsHHpT2QZU",
+            authDomain: "takean.firebaseapp.com",
+            projectId: "takean",
+            storageBucket: "takean.firebasestorage.app",
+            messagingSenderId: "359116659063",
+            appId: "1:359116659063:web:eb81859e5a8f885e546972",
+            measurementId: "G-VXLM679GKK"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // ============================================================
+        // ПОЛУЧАЕМ ID ИЗ URL
+        // ============================================================
+        // Поддерживаем: /3, /?id=3, /3?anything
+        let shortId = null;
+        const path = window.location.pathname;
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // Если путь содержит цифры — это ID
+        const pathMatch = path.match(/\/(\d+)/);
+        if (pathMatch) {
+            shortId = pathMatch[1];
+        } else if (urlParams.has('id')) {
+            shortId = urlParams.get('id');
+        }
+
+        // ============================================================
+        // ПОИСК ПОСТА ПО КОРОТКОМУ ID
+        // ============================================================
+        function findPostByShortId(id) {
+            const idStr = String(id).trim();
+            if (!idStr) return Promise.reject('ID пустой');
+
+            // Ищем по shortId (строковый порядковый номер)
+            return db.collection('posts')
+                .where('shortId', '==', idStr)
+                .limit(1)
+                .get()
+                .then(snapshot => {
+                    if (snapshot.empty) {
+                        // Пробуем найти по order (числовой)
+                        return db.collection('posts')
+                            .where('order', '==', parseInt(idStr))
+                            .limit(1)
+                            .get()
+                            .then(snapshot2 => {
+                                if (snapshot2.empty) {
+                                    throw new Error('Пост не найден');
+                                }
+                                return snapshot2.docs[0];
+                            });
+                    }
+                    return snapshot.docs[0];
+                })
+                .then(doc => {
+                    return { id: doc.id, ...doc.data() };
+                });
+        }
+
+        // ============================================================
+        // ОСНОВНАЯ ЛОГИКА
+        // ============================================================
+        const errorEl = document.getElementById('errorMsg');
+
+        if (!shortId) {
+            errorEl.textContent = '❌ Неверный ID';
+            errorEl.style.display = 'block';
+            document.querySelector('.loader p:first-of-type').textContent = 'Ошибка';
+            setTimeout(() => {
+                window.location.href = 'https://takean.pages.dev/';
+            }, 2000);
+            throw new Error('ID не найден');
+        }
+
+        findPostByShortId(shortId)
+            .then(post => {
+                const fullUrl = `https://takean.pages.dev/post.html?id=${post.id}`;
+                setTimeout(() => {
+                    window.location.href = fullUrl;
+                }, 300);
+            })
+            .catch(err => {
+                console.error('Ошибка:', err);
+                errorEl.style.display = 'block';
+                document.querySelector('.loader p:first-of-type').textContent = 'Пост не найден';
+                setTimeout(() => {
+                    window.location.href = 'https://takean.pages.dev/';
+                }, 3000);
+            });
+    </script>
+</body>
+</html>
