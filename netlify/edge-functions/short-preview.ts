@@ -9,23 +9,23 @@ export default async (request: Request, context: Context) => {
   const url = new URL(request.url);
   const userAgent = request.headers.get("user-agent") || "";
 
-  // Пропускаем статические файлы
+  // Пропускаем статические файлы и служебные расширения
   if (url.pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|json|woff|woff2|ttf)$/i)) {
     return context.next();
   }
 
-  // 1. Достаем короткий ID (из пути /123 или из query ?id=123)
+  // Извлекаем shortId из query ?id=6 или из пути /6
   let shortId = url.searchParams.get("id");
   if (!shortId) {
-    const pathMatch = url.pathname.match(/\/(\d+)/);
-    if (pathMatch) {
-      shortId = pathMatch[1];
+    const cleanPath = url.pathname.replace(/^\/+|\/+$/g, ""); // Убираем слэши в начале и конце
+    if (cleanPath && !isNaN(Number(cleanPath))) {
+      shortId = cleanPath;
     }
   }
 
   const isBot = BOT_REGEX.test(userAgent);
 
-  // Если запрос не от бота или нет shortId, отдаем обычный index.html для редиректа
+  // Если это не бот или нет shortId, отдаем обычный index.html для редиректа юзера
   if (!shortId || !isBot) {
     return context.next();
   }
@@ -33,10 +33,15 @@ export default async (request: Request, context: Context) => {
   try {
     let fields: Record<string, any> | null = null;
 
-    // 2. Поиск в Firestore по shortId (строка)
+    // 1. Поиск в Firestore по shortId (как строка, например "6")
     fields = await searchFirestore("shortId", shortId, "stringValue");
 
-    // 3. Если не найдено — поиск по order (число)
+    // 2. Если не найдено — поиск по shortId (как число, например 6)
+    if (!fields && !isNaN(Number(shortId))) {
+      fields = await searchFirestore("shortId", parseInt(shortId, 10), "integerValue");
+    }
+
+    // 3. Если не найдено — поиск по order (как число)
     if (!fields && !isNaN(Number(shortId))) {
       fields = await searchFirestore("order", parseInt(shortId, 10), "integerValue");
     }
@@ -86,7 +91,7 @@ export default async (request: Request, context: Context) => {
       imageUrl = "https://takean.cl.is/og-image.png";
     }
 
-    // 7. Очистка текста
+    // 7. Очистка текста от тегов
     let cleanDescription = rawContent
       .replace(/\[img\].*?\[\/img\]/gi, "")
       .replace(/\[.*?\]/g, "")
@@ -101,7 +106,7 @@ export default async (request: Request, context: Context) => {
       cleanDescription = cleanDescription.substring(0, 177) + "...";
     }
 
-    // 8. Возвращаем метатеги для бота
+    // 8. Ответ с метатегами для социальной сети
     const html = `<!DOCTYPE html>
 <html lang="ru">
 <head>
