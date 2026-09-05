@@ -1,3 +1,7 @@
+[[edge_functions]]
+  function = "short-preview"
+  path = "/*"
+
 [[redirects]]
   from = "/?id=:id"
   to = "/:id"
