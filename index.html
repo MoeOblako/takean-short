@@ -35,7 +35,7 @@
     <div class="loader">
         <div class="spinner"></div>
         <p>Перенаправление...</p>
-        <p class="error" id="errorMsg">❌ Пост не найден</p>
+        <p class="error" id="errorMsg">Пост не найден</p>
         <p class="info" id="infoMsg">Проверка поста...</p>
     </div>
 
@@ -83,7 +83,7 @@
             if (!idStr) return Promise.reject('ID пустой');
 
             infoEl.style.display = 'block';
-            infoEl.textContent = `🔍 Ищем пост с ID: ${idStr}...`;
+            infoEl.textContent = ``;
 
             // Ищем по shortId (строковый порядковый номер)
             return db.collection('posts')
@@ -92,7 +92,7 @@
                 .get()
                 .then(snapshot => {
                     if (snapshot.empty) {
-                        infoEl.textContent = `🔍 Ищем по порядковому номеру: ${idStr}...`;
+                        infoEl.textContent = ``;
                         // Пробуем найти по order (числовой)
                         return db.collection('posts')
                             .where('order', '==', parseInt(idStr))
@@ -109,7 +109,7 @@
                 })
                 .then(doc => {
                     const data = doc.data();
-                    infoEl.textContent = `✅ Пост найден! Перенаправление...`;
+                    infoEl.textContent = ``;
                     return { id: doc.id, ...data };
                 });
         }
@@ -118,7 +118,7 @@
         // ОСНОВНАЯ ЛОГИКА
         // ============================================================
         if (!shortId) {
-            errorEl.textContent = '❌ Неверный ID';
+            errorEl.textContent = 'Неверный ID';
             errorEl.style.display = 'block';
             document.querySelector('.loader p:first-of-type').textContent = 'Ошибка';
             infoEl.style.display = 'none';
@@ -138,7 +138,7 @@
             })
             .catch(err => {
                 console.error('Ошибка:', err);
-                errorEl.textContent = '❌ Пост не найден';
+                errorEl.textContent = 'Пост не найден';
                 errorEl.style.display = 'block';
                 document.querySelector('.loader p:first-of-type').textContent = 'Пост не найден';
                 infoEl.style.display = 'none';
