@@ -1,0 +1,9 @@
+[[redirects]]
+  from = "/?id=:id"
+  to = "/:id"
+  status = 301
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
